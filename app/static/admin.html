@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>WhatsApp AI · لوحة الإدارة</title><link rel="stylesheet" href="/admin.css"><script src="/admin.js" defer></script></head>
+<body>
+<header><span class="badge">DEMO AI SOLUTIONS</span><h1>صندوق المحادثات</h1><p>راجع الطلبات، رد بنفسك، ورجّع المساعد وقت ما تكون جاهز.</p></header>
+<main>
+<section id="login"><label for="key">مفتاح الإدارة · ADMIN_API_KEY</label><div class="row"><input id="key" type="password" autocomplete="off" placeholder="انسخ القيمة من ملف .env"><button id="connect">دخول</button></div><p class="muted">المفتاح بيكون في ذاكرة الصفحة فقط. مش بيتحفظ في المتصفح أو الرابط.</p></section>
+<p id="error" role="alert"></p>
+<section id="workspace" hidden>
+<div class="row toolbar"><select id="filter" aria-label="فلتر الحالة"><option value="human_required">محتاجة تدخل بشري</option><option value="">كل المحادثات</option><option value="active">البوت شغال</option><option value="resolved">مغلقة</option></select><button id="refresh">تحديث</button><button id="logout" class="secondary">خروج</button></div>
+<p id="config" class="muted"></p><p class="muted">آخر 100 محادثة. استخدم API والـoffset للقديم. الأوقات حسب جهازك.</p>
+<div class="columns"><div id="list"></div><article id="detail"><p class="muted">اختار محادثة لعرض التفاصيل.</p></article></div>
+</section>
+<footer>رابط wa.me بيفتح واتساب الحساب الشخصي عندك، مش صندوق رقم Meta التجريبي. للرد من رقم الاختبار استخدم خانة الرد هنا خلال 24 ساعة من آخر رسالة للعميل. مفيش إشعار خارجي للموظف؛ لازم تتابع اللوحة.</footer>
+</main></body></html>

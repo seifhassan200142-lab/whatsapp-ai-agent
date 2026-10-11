@@ -1,0 +1,574 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>دليل تشغيل WhatsApp AI Agent</title><style>
+:root{font-family:Segoe UI,Tahoma,Arial,sans-serif;background:#f2f5f2;color:#223c34;font-size:17px;line-height:1.95}
+body{margin:0}header{background:#113f3b;color:#fff;padding:30px max(6vw,20px)}header span{font-size:13px;letter-spacing:3px;color:#b4e5be}
+main{max-width:1080px;margin:30px auto;background:#fff;padding:40px;border-radius:16px;border:1px solid #dce5dd}
+h1{font-size:34px;line-height:1.5}h2{margin-top:50px;border-top:1px solid #dce5dd;padding-top:25px;color:#13674f}h3{margin-top:30px}
+pre{direction:ltr;text-align:left;white-space:pre-wrap;overflow-wrap:anywhere;background:#132d2b;color:#effaf1;padding:20px;border-radius:10px;line-height:1.65;font-size:14px}
+code{font-family:Consolas,monospace;direction:ltr;unicode-bidi:embed;font-size:.9em}p code,li code,td code{background:#edf3ee;border-radius:4px;padding:2px 5px;overflow-wrap:anywhere}
+table{border-collapse:collapse;width:100%;font-size:15px;table-layout:fixed}th,td{border:1px solid #dce5dd;padding:12px;vertical-align:top;overflow-wrap:anywhere}th{background:#eaf3ed;text-align:right}
+a{color:#08745b;text-underline-offset:4px}li{margin-bottom:10px}strong{color:#173e32}blockquote{background:#f0f6f1;padding:15px}
+@media(max-width:700px){main{margin:10px;padding:20px}h1{font-size:26px}table{font-size:13px}td,th{padding:7px}}
+@media print{header{display:none}main{margin:0;border:0;padding:0}body{background:white}pre{background:#edf2ef;color:#111}h2{break-before:page}table{font-size:11px}}
+</style></head><body><header><span>WHATSAPP AI AGENT · SETUP GUIDE</span><p>افتح الدليل، نفّذ الخطوات، وجرّب من موبايلك.</p></header><main><h1 id="whatsapp-ai-agent">شغّل WhatsApp AI Agent — ابدأ من هنا</h1>
+<p>المشروع كامل: FastAPI + Groq SDK + WhatsApp Cloud API + SQLite. فيه استقبال رسائل وفويس، ردود من ملف الشركة، ذاكرة، وتحويل لموظف مع لوحة إدارة. مفيش Docker أو LangChain أو vector database أو Google Sheets.</p>
+<p><strong>ابدأ بالترتيب تحت. مش محتاج تذاكر الكود دلوقتي.</strong> الشركة والبيانات الموجودة أمثلة وهمية.</p>
+<p>تم اختبار الكود محليًا على Python 3.12.14 / Linux. تشغيل Windows مكتوب لـPython 3.12. الاختبارات بتستخدم Groq SDK الحقيقي وطلبات Meta مع شبكة وهمية. <strong>لم يتم اختبار حساب Meta أو Groq حقيقي أو إرسال واتساب حقيقي أثناء تجهيز النسخة. نجاح الربط النهائي بيتأكد برسالة من موبايلك.</strong> مفيش ضمان إن كل إعدادات حسابات الخدمات الخارجية هتكون جاهزة تلقائيًا.</p>
+<h2 id="1-windows-vs-code">1. تجهيز Windows وVS Code</h2>
+<ol>
+<li>فك ZIP في مكان بسيط، مثل <code>C:\Projects</code>، وافتح المجلد <code>whatsapp-ai-agent</code> اللي جواه <code>requirements.txt</code> و<code>app</code>.</li>
+<li>لو Python مش موجود: نزّل Python 3.12 من <a href="https://www.python.org/downloads/windows/">python.org</a> واختار Windows installer المناسب، وفعّل <strong>Add python.exe to PATH</strong>. أو افتح PowerShell واكتب:</li>
+</ol>
+<pre><code class="language-powershell">winget install --exact --id Python.Python.3.12
+</code></pre>
+<ol>
+<li>اقفل التيرمنال وافتحه من جديد بعد التثبيت. افتح VS Code، ثم <strong>File → Open Folder</strong>، واختار مجلد المشروع. لو ظهرت نافذة Workspace Trust للملفات اللي فكيتها، اختار الثقة بعد مراجعتها.</li>
+<li>من <strong>Terminal → New Terminal</strong> اختار PowerShell. المفروض تكون داخل المجلد اللي فيه <code>requirements.txt</code>. نفّذ الأوامر واحد واحد:</li>
+</ol>
+<pre><code class="language-powershell">py -3.12 --version
+py -3.12 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+Copy-Item .env.example .env
+python -m scripts.prepare_env
+python -m pytest -q
+</code></pre>
+<p><strong><code>Copy-Item</code> أول مرة فقط. متنسخش <code>.env.example</code> فوق مفاتيحك في المرات الجاية.</strong> سكريبت <code>prepare_env</code> بيولّد <code>ADMIN_API_KEY</code> و<code>META_VERIFY_TOKEN</code> عشوائيين، ومش بيغيّر القيم الموجودة بالفعل.</p>
+<p>لو التفعيل مرفوض:</p>
+<pre><code class="language-powershell">Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\.venv\Scripts\Activate.ps1
+</code></pre>
+<p>ده للجلسة الحالية فقط. أو استخدم Python بتاع البيئة مباشرة بدون تفعيل:</p>
+<pre><code class="language-powershell">.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m scripts.prepare_env
+</code></pre>
+<p>لو <code>py</code> مش معروف و<code>python --version</code> بيطلع 3.12، استخدم <code>python -m venv .venv</code>. لو الاتنين مش معروفين، أعد فتح VS Code بعد تثبيت Python.</p>
+<h2 id="2-groq-api-key">2. حط Groq API Key فين؟</h2>
+<p>من قائمة ملفات VS Code افتح <strong><code>.env</code></strong>، مش <code>.env.example</code>. غيّر أول سطر وحط مفتاحك الحقيقي بعد علامة <code>=</code>:</p>
+<pre><code class="language-dotenv">GROQ_API_KEY=PASTE_YOUR_REAL_GROQ_KEY_HERE
+GROQ_MODEL=openai/gpt-oss-20b
+GROQ_WHISPER_MODEL=whisper-large-v3-turbo
+</code></pre>
+<p>استبدل النص <code>PASTE_YOUR_REAL_GROQ_KEY_HERE</code> بالكامل. متحطش <code>Bearer</code> قبله، ومتبعتهوش في واتساب أو GitHub أو صورة شاشة. باقي المفاتيح هتملاها في الخطوة الجاية.</p>
+<p>النموذج الافتراضي <code>openai/gpt-oss-20b</code> مستضاف على <strong>Groq</strong>، وكل طلبات الذكاء الاصطناعي رايحة لـGroq. الاسم مش معناه إنك محتاج OpenAI API Key. اخترته من قائمة Groq الحالية، ومتوفر ضمن جدول Free Plan وقت المراجعة. Whisper Turbo بيدعم التفريغ بلغات متعددة.</p>
+<p>مش لازم تدفع أو ترقي حسابك للتجربة. راجع <a href="https://console.groq.com/settings/limits">حدود حسابك</a> واستخدم Free Plan. الكود مبيغيّرش خطة الحساب ولا بيبدّل لخدمة تانية. لو مفتاحك تابع أصلًا لحساب مدفوع، إعدادات فوترة حسابك هي اللي بتطبق.</p>
+<p>الإعدادات الافتراضية بتفصل 3 ثواني على الأقل بين بدء طلبات Groq، وبتحط حد محلي 100 استدعاء يوميًا بتوقيت UTC، بما فيها الملخصات والتفريغ والفحوصات. ده احتياط للاختبار، مش ضمان عدم الوصول لحدود التوكنات/الصوت في حسابك. عند 429 مفيش إعادة محاولات تلقائية؛ بيتحفظ سبب العطل وتتوقف المحادثة للمراجعة. بعد إصلاح السبب اضغط تشغيل البوت وابعت رسالة جديدة.</p>
+<h2 id="3-meta">3. إعداد Meta ورقم واتساب التجريبي</h2>
+<p><strong>تاريخ مراجعة المصادر: 11 أكتوبر 2026.</strong> بعض صفحات Meta الرسمية أعادت 429 أثناء المراجعة؛ لذلك لم أتمكن من فحص كل شاشة الحالية كاملة أو الدخول إلى حسابك. المسارات أدناه تغطي واجهة use cases وواجهة WhatsApp product؛ لو Labels عندك مختلفة، اتبع صفحة <a href="https://developers.facebook.com/documentation/business-messaging/whatsapp/get-started">Get Started الرسمية</a> بدل اختيار إعداد عشوائي. وجود الرقم وصلاحياته بيتأكدوا بفحص <code>--meta</code> تحت، والويبهوك برسالة فعلية.</p>
+<h3 id="a-api-setup">A. اعمل التطبيق ووصل لخانة API Setup</h3>
+<ol>
+<li>افتح <a href="https://developers.facebook.com/">Meta for Developers</a> وسجّل الدخول بحساب Facebook بتاعك.</li>
+<li>لو دي أول مرة، أكمل تسجيل حساب المطوّر من <strong>Get Started</strong> أو <strong>My Apps</strong> حسب الصفحة اللي ظهرت لك؛ نفّذ تحقق الهاتف/الإيميل والشروط لو اتطلبوا.</li>
+<li>افتح <a href="https://developers.facebook.com/apps/">My Apps</a> واضغط <strong>Create App</strong>.</li>
+<li>اكتب اسم للتطبيق، مثل <code>Seif WhatsApp AI Demo</code>، وإيميل تواصل صحيح.</li>
+<li>لو ظهرت <strong>Use cases</strong>، اختار حالة استخدام WhatsApp، اللي بتظهر باسم <strong>Connect with customers through WhatsApp</strong> في مسار الإعداد. أكمل <strong>Next</strong> واختار/أنشئ Business Portfolio لو Meta طلبت ده، ثم أكمل إنشاء التطبيق.</li>
+<li>داخل التطبيق افتح <strong>Use cases → Customize</strong> لحالة WhatsApp؛ الهدف الوصول إلى <strong>API Setup</strong>. في تطبيقات بواجهة المنتجات هتلاقي <strong>WhatsApp → Set up / Quickstart → API Setup</strong>. ولو بتعمل App من واجهة قديمة فيها <strong>Other</strong> ثم نوع التطبيق، اختار <strong>Business</strong> وبعد الإنشاء أضف منتج WhatsApp.</li>
+<li>أكمل شروط WhatsApp وأي ربط حساب تجريبي تطلبه شاشة الإعداد. في API Setup، اختار حساب WhatsApp التجريبي لو ظهر اختيار الحساب.</li>
+</ol>
+<p><strong>للتجربة المطلوبة استخدم رقم الاختبار اللي Meta بتوفره. متسجلش رقمك الشخصي كرقم إرسال تجاري؛ رقمك الشخصي هنا هو المستلم فقط.</strong> لو الحساب عليه قيد، أو Meta بتطلب تحقق قبل ما تديك أصول الاختبار، لازم تكمل الطلب الظاهر في حسابك؛ الكود مبيقدرش يتجاوز ده.</p>
+<h3 id="b-ids-token">B. خد الرقم والـIDs والـToken</h3>
+<p>داخل <strong>API Setup</strong> ابحث عن جزء إرسال الرسائل:</p>
+<ul>
+<li><strong>From / Test phone number</strong>: ده رقم واتساب اللي Meta موفّراه. سجّله عندك علشان تبعت له من موبايلك.</li>
+<li><strong>Phone number ID</strong> أو <strong>Test phone number ID</strong>: انسخ الـID في <code>META_PHONE_NUMBER_ID</code>. ده رقم تعريفي، مش رقم الموبايل الظاهر تحت From، ومش App ID أو Messaging account ID/WABA ID.</li>
+<li><strong>Temporary access token / Generate access token</strong>: ولّد/انسخ توكن الاختبار، واسمح باختيار حساب WhatsApp التجريبي لو ظهرت نافذة تفويض. حط القيمة فقط في <code>META_ACCESS_TOKEN</code>.</li>
+<li><strong>To / Recipient phone number</strong>: افتح اختيار المستلم، ثم <strong>Manage phone number list / Add phone number</strong> لو متاحة. أضف رقم واتساب الشخصي بكود الدولة، وأدخل كود التأكيد بالطريقة اللي Meta تعرضها. مثال: رقم مصري يبدأ <code>20</code> أو إماراتي <code>971</code>، من غير صفر محلي إضافي بعد كود الدولة.</li>
+</ul>
+<p>التوكن المؤقت قصير العمر؛ راجع وقت انتهاء الصلاحية المعروض. لما ينتهي، ولّد واحد جديد وعدّله في <code>.env</code> وأعد تشغيل السيرفر. مفيش تجديد تلقائي في المشروع.</p>
+<h3 id="c-app-secret-verify-token">C. هات App Secret وجهّز Verify Token</h3>
+<ol>
+<li>داخل نفس التطبيق افتح <strong>App settings / Settings → Basic</strong>.</li>
+<li>عند <strong>App secret</strong> اضغط <strong>Show</strong> وأكمل تأكيد حسابك لو اتطلب.</li>
+<li>انسخ القيمة إلى <code>META_APP_SECRET</code>. ده سر التطبيق اللي بيوقّع الـwebhooks؛ <strong>مش Access Token</strong>.</li>
+<li><code>META_VERIFY_TOKEN</code> موجود بالفعل بعد تشغيل <code>prepare_env</code>. دي كلمة عشوائية أنت اخترتها/السكريبت ولّدها، مش بتاخدها من Meta. هتنسخ نفس قيمتها لاحقًا في إعداد الويبهوك.</li>
+</ol>
+<p>جدول <code>.env</code> النهائي:</p>
+<table>
+<thead>
+<tr>
+<th>المتغير</th>
+<th>تحط فيه إيه؟</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GROQ_API_KEY</code></td>
+<td>مفتاح Groq الموجود معاك</td>
+</tr>
+<tr>
+<td><code>META_ACCESS_TOKEN</code></td>
+<td>توكن Meta الخاص برقم الاختبار</td>
+</tr>
+<tr>
+<td><code>META_PHONE_NUMBER_ID</code></td>
+<td>Phone number ID من API Setup</td>
+</tr>
+<tr>
+<td><code>META_APP_SECRET</code></td>
+<td>App secret من إعدادات نفس التطبيق</td>
+</tr>
+<tr>
+<td><code>META_VERIFY_TOKEN</code></td>
+<td>القيمة العشوائية اللي جهّزها السكريبت؛ انسخها إلى Meta كما هي</td>
+</tr>
+<tr>
+<td><code>ADMIN_API_KEY</code></td>
+<td>القيمة العشوائية للوحة الإدارة؛ لا تتحط في Meta</td>
+</tr>
+<tr>
+<td><code>META_GRAPH_VERSION</code></td>
+<td>الافتراضي <code>v26.0</code>؛ قابل للتغيير لإصدار مدعوم من Meta</td>
+</tr>
+</tbody>
+</table>
+<p><code>v26.0</code> ظاهر في المراجع وإصدارات Meta الرسمية الحالية. لو مثال Graph API في API Setup بيستخدم إصدار أحدث، تقدر تنسخه في المتغير وتعيد الفحص. متستخدمش رقم إصدار عشوائي. سكريبت الفحص بيقارن إصدار الاستجابة لو Meta رجّعته.</p>
+<p>احفظ الملف بـ <strong>Ctrl + S</strong>، وبعدين:</p>
+<pre><code class="language-powershell">python -m scripts.check_setup
+python -m scripts.check_setup --groq --meta
+</code></pre>
+<p>المطلوب تشوف <code>Missing settings: none</code>، والنموذجين <code>LISTED</code>، و<code>Groq test: OK</code>، و<code>Meta token + Phone Number ID: OK</code>. فحص Groq بيعمل طلب نصي صغير حقيقي؛ فحص Meta قراءة فقط ومبيبعتش واتساب. فحص الصوت الحقيقي لسه في الخطوة 7.</p>
+<h3 id="d">D. قيود الاختبار</h3>
+<ul>
+<li>الإرسال من رقم الاختبار للأرقام اللي اتضافت واتحققت في قائمة المستلمين. التزم بعدد المستلمين والقيود المعروضة في API Setup؛ الحساب التجريبي مش إرسال مفتوح لأي رقم.</li>
+<li>رقم Meta التجريبي مش حساب تقدر تسجّل دخوله في WhatsApp العادي أو WhatsApp Web وتفتحه كصندوق رسائل.</li>
+<li>مشروعنا بيرد نص حر خلال 24 ساعة من آخر رسالة واردة من العميل. لو فاتت، خلي العميل يبعت رسالة جديدة؛ بعد كده شغّل البوت أو رد يدويًا. مفيش إرسال تسويقي أو Templates تلقائية في المشروع.</li>
+<li>رسالة <code>hello_world</code> الموجودة في API Setup مفيدة لإثبات إن رقم الاختبار قادر يبعت. <strong>وصولها لوحده مش اختبار للبوت</strong>؛ لازم ترد عليها من موبايلك بعد إعداد الويبهوك.</li>
+<li>رابط <code>wa.me</code> في اللوحة بيفتح محادثة من حساب واتساب اللي إنت مسجّل بيه على جهازك. للرد من رقم الاختبار نفسه استخدم خانة الرد اليدوي في لوحة المشروع.</li>
+<li>لا تحتاج استضافة مدفوعة. لو ظهر لك مسار إضافة رقم إنتاج أو فوترة، ارجع لاختيار test number؛ متعتبرش خطوات الإنتاج شرطًا مؤكدًا للتجربة.</li>
+</ul>
+<h2 id="4-fastapi">4. شغّل FastAPI محليًا</h2>
+<p>في Terminal المشروع، والبيئة مفعّلة:</p>
+<pre><code class="language-powershell">python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --no-access-log
+</code></pre>
+<p><strong>سيب التيرمنال ده شغال.</strong> متستخدمش <code>--reload</code> أو أكتر من worker في التجربة دي؛ المشروع عامل معالجة واحدة متسلسلة. إيقافه بـ <strong>Ctrl + C</strong>. بعد أي تعديل <code>.env</code> وقّفه وشغّله تاني. تعديل <code>data/knowledge.md</code> بيتقرأ مع الرسالة الجديدة من غير restart.</p>
+<p>افتح في المتصفح:</p>
+<ul>
+<li><a href="http://127.0.0.1:8000/health">فحص التشغيل</a>: المفروض <code>status=ok</code> و<code>database=ok</code> و<code>configured=true</code> و<code>worker_running=true</code>.</li>
+<li><a href="http://127.0.0.1:8000/docs">Swagger</a>: هتلاقي API endpoints. زر <strong>Authorize</strong> تدخل فيه قيمة <code>ADMIN_API_KEY</code> لو هتجرّب مسارات الإدارة. متحطش <code>Bearer</code> قبلها.</li>
+<li><a href="http://127.0.0.1:8000/admin">لوحة الإدارة</a>: الصق <code>ADMIN_API_KEY</code> من <code>.env</code> واضغط دخول. الصفحة الأولى نفسها عامة، لكن كل بيانات العملاء والإجراءات ورا فحص المفتاح.</li>
+</ul>
+<p><code>health</code> مبيعملش مكالمات خارجية، فنجاحه دليل إن التطبيق شغال فقط. <code>external_integrations=not_checked_by_health_endpoint</code> طبيعي. استخدم اللوحة محليًا أثناء التجربة؛ مفيش احتياج تفتحها من ngrok.</p>
+<h2 id="5-ngrok-webhook">5. إعداد ngrok وربط الـWebhook</h2>
+<ol>
+<li>اعمل حساب Free من <a href="https://dashboard.ngrok.com/signup">ngrok</a>.</li>
+<li>افتح <a href="https://ngrok.com/download/windows">تنزيل ngrok لـWindows</a>. تقدر تثبته من Microsoft Store أو تنفّذ الأمر الرسمي:</li>
+</ol>
+<pre><code class="language-powershell">winget install ngrok -s msstore
+</code></pre>
+<ol>
+<li>افتح Terminal جديد في VS Code بعد التثبيت. انسخ <strong>Authtoken</strong> من لوحة حساب ngrok، واستخدمه بدل النص التالي:</li>
+</ol>
+<pre><code class="language-powershell">ngrok config add-authtoken &quot;PASTE_YOUR_NGROK_AUTHTOKEN&quot;
+ngrok http 8000
+</code></pre>
+<p>ده <strong>Terminal تاني</strong>؛ الأول لسه مشغّل FastAPI. ngrok token مش Groq key ومش Meta token، ومش مطلوب في <code>.env</code>.</p>
+<ol>
+<li>هتلاقي عنوان HTTPS أمام <strong>Forwarding</strong>. انسخه، مثل <code>https://your-assigned-domain.ngrok-free.app</code>. اسم الدومين مثال فقط؛ استخدم اللي ظهر عندك.</li>
+<li>افتح <code>https://YOUR_ACTUAL_DOMAIN/health</code> وتأكد إنه بيوصل للتطبيق. لو المتصفح عرض صفحة تحذير ngrok المجانية، كمل منها مرة عند الاختبار في المتصفح.</li>
+<li>عنوان الـCallback يكون <strong>نفس عنوان HTTPS زائد <code>/webhook</code></strong>، مثل:</li>
+</ol>
+<pre><code class="language-text">https://YOUR_ACTUAL_DOMAIN/webhook
+</code></pre>
+<ol>
+<li>في Meta، افتح <strong>WhatsApp → Configuration</strong>، أو داخل <strong>Use cases → Customize → Configuration</strong> حسب واجهة التطبيق.</li>
+<li>عند إعداد <strong>Webhook</strong> اختار التعديل، والصق الرابط في <strong>Callback URL</strong>.</li>
+<li>في <strong>Verify token</strong> الصق <strong>قيمة <code>META_VERIFY_TOKEN</code></strong> من <code>.env</code>، بدون اسم المتغير وبدون علامات تنصيص.</li>
+<li>اضغط <strong>Verify and save</strong>. ظهور <code>webhook_verified</code> في Terminal FastAPI وحفظ الرابط في Meta معناه إن خطوة GET نجحت.</li>
+<li>افتح <strong>Webhook fields / Manage</strong> واشترك في <strong><code>messages</code></strong>. لو شاشة Webhooks العامة بتطلب Object، اختار <strong>WhatsApp Business Account</strong> ثم <code>messages</code>. الاشتراك في الحقل ضروري بجانب Verify and save.</li>
+<li>تأكد إن إعداد WhatsApp مرتبط بالحساب التجريبي الصحيح؛ تغيير التطبيق أو WABA قد يحتاج إعادة إعداد الاشتراك. متختارش webhook لتطبيق Facebook أو Instagram.</li>
+</ol>
+<p>الخطة المجانية الحالية بتوفر dev domain معيّن لحسابك؛ مش لازم يتغير كل restart. <strong>قارن العنوان فعليًا كل مرة</strong>. لو اتغير، حدّث Callback URL في Meta وكرر Verify and save؛ مفيش تغيير مطلوب في كود المشروع.</p>
+<p>متضيفش صفحة Login أو Basic Auth قدام <code>/webhook</code> في ngrok، لأن Meta محتاجة توصله. الحماية هنا بتوقيع Meta. البيانات هتمر عبر ngrok حسب طريقة النفق، وواجهة Traffic Inspector قد تعرض محتوى الطلبات؛ متشاركش سجلها وفيه بيانات عملاء.</p>
+<h2 id="6">6. أول تجربة واتساب حقيقية</h2>
+<ol>
+<li>خلي Terminal FastAPI وTerminal ngrok شغالين والكمبيوتر صاحي ومتصل بالإنترنت.</li>
+<li>اتأكد إن رقمك الشخصي متحقق ومختار ضمن المستلمين في API Setup.</li>
+<li>من API Setup اختار test number في From، ورقمك في To، وابعت نموذج <strong>hello_world</strong> باستخدام زر إرسال رسالة الاختبار الموجود في الشاشة. لو ماوصلش، أصلح إعداد Meta قبل تجربة البوت.</li>
+<li>افتح الرسالة على واتساب موبايلك، ورد <strong>من رقمك الشخصي المعتمد إلى رقم اختبار Meta</strong>:</li>
+</ol>
+<pre><code class="language-text">أهلًا، إيه الخدمات اللي بتقدموها؟
+</code></pre>
+<ol>
+<li>راقب Terminal FastAPI؛ المثال التالي بيوضح أنواع السطور المتوقعة، والأرقام/الأوقات هتختلف:</li>
+</ol>
+<pre><code class="language-text">INFO agent startup_ok missing_settings=none
+INFO agent webhook_verified
+INFO agent webhook_queued count=1
+INFO agent groq_request operation=reply
+INFO agent groq_ok operation=reply
+INFO agent meta_send_accepted local_id=2
+</code></pre>
+<ol>
+<li>استنى الرد على موبايلك. <code>groq_ok</code> معناه إن طلب Groq رجع، و<code>meta_send_accepted</code> معناه Meta قبلت الإرسال؛ <strong>ظهور الرد على واتساب هو تأكيد الوصول</strong>. حالات <code>delivered/read</code> تظهر في اللوحة لما إشعار Meta يوصل.</li>
+<li>افتح لوحة الإدارة واختار <strong>كل المحادثات</strong> ثم <strong>تحديث</strong>. هتشوف رقمك والرسالة والرد.</li>
+<li>جرّب إنجليزي: <code>What are your working hours?</code> المفروض يرد بالإنجليزي بالمعلومة الموجودة في <code>knowledge.md</code>.</li>
+</ol>
+<p>مفيش طباعة لمفاتيح أو نص المحادثة في logs التطبيق. أمر التشغيل بيوقف access logs علشان رابط تحقق Meta فيه Verify Token. لو هتبعت صورة خطأ، اخفي أي مفاتيح ورقم شخصي.</p>
+<h2 id="7">7. تجربة الفويس</h2>
+<ol>
+<li>لو المحادثة حالتها مراجعة بشرية أو مغلقة، اضغط <strong>تشغيل البوت</strong> أولًا.</li>
+<li>افتح نفس المحادثة على واتساب واضغط الميكروفون وسجّل 5–10 ثواني، مثل: «مواعيد الشغل عندكم إيه؟». ابعت <strong>voice note من واتساب نفسه</strong>.</li>
+<li>التطبيق يستقبل <code>messages[].audio.id</code>، ويستخدم توكن Meta للحصول على رابط تنزيل حديث، وبعد كده ينزّل الملف بالتوكن من مضيف Meta المسموح.</li>
+<li>فويس واتساب المعتاد OGG/Opus؛ بيتبعت إلى Groq باسم <code>voice.ogg</code>. Groq بيدعم OGG مباشرة، <strong>مش محتاج FFmpeg للتجربة دي</strong>.</li>
+<li>هتشوف <code>groq_request operation=transcription</code> ثم <code>groq_ok operation=transcription</code> ثم <code>audio_transcribed</code>، وبعدهم طلب الرد وإرسال النص إلى WhatsApp.</li>
+<li>في لوحة الإدارة نوع الرسالة <code>audio</code>، وهتلاقي الكلام المفرّغ مكان نص الرسالة. الرد نفسه نص، مش فويس.</li>
+</ol>
+<p>أقصى حجم محلي 16,000,000 بايت؛ جرّب رسالة قصيرة لتوفير الحصة. الكود بيدعم OGG وMP3 وM4A وWAV وFLAC وWEBM حسب MIME المسموح، وبيحذف بايتات الصوت من الاستخدام بعد التفريغ بدون ملف صوت دائم. ملفات AAC/AMR منفصلة مش مدعومة في النسخة دي؛ لو ظهر <code>audio_unsupported_format</code>، ابعت Voice Note جديدة من التطبيق. مفيش تثبيت FFmpeg أو تحويل تلقائي مطلوب.</p>
+<h2 id="8">8. اختبارات الذاكرة والتحويل لموظف</h2>
+<h3 id="_1">الذاكرة والحفظ</h3>
+<ol>
+<li>ابعت: <code>اسمي سيف وعايز موقع لشركة صغيرة</code>.</li>
+<li>بعد الرد ابعت: <code>أنا قلتلك اسمي إيه؟</code> المفروض يذكر سيف من الرسائل الأخيرة. السياق المرسل للنموذج محدود بآخر 10 رسائل؛ مش كل الأرشيف في كل طلب.</li>
+<li>افتح اللوحة وشوف الرسائل. قاعدة البيانات هتتعمل تلقائيًا في <code>data/conversations.sqlite3</code>، مش مطلوب تثبيت SQLite منفصل.</li>
+<li>وقّف FastAPI وشغّله تاني، افتح نفس المحادثة؛ البيانات المفروض لسه موجودة. الحالات <code>human_required</code> و<code>resolved</code> بتفضل زي ما هي بعد restart.</li>
+</ol>
+<p>للتأكد من عدد السجلات بدون عرض بيانات خاصة، افتح Terminal ثالث في مجلد المشروع، فعّل البيئة، ونفّذ:</p>
+<pre><code class="language-powershell">python -c &quot;import sqlite3; c=sqlite3.connect('data/conversations.sqlite3'); print('conversations:',c.execute('SELECT COUNT(*) FROM conversations').fetchone()[0]); print('messages:',c.execute('SELECT COUNT(*) FROM messages').fetchone()[0]); c.close()&quot;
+</code></pre>
+<h3 id="_2">سؤال مش موجود في الملف</h3>
+<ol>
+<li>ابعت: <code>عايز السعر النهائي لموقع كامل وخصم 40% وموافقة على استرداد المبلغ خلال شهر</code>.</li>
+<li>مفيش أسعار أو خصومات أو سياسة استرداد مؤكدة في الملف؛ المطلوب يتسجل للمراجعة البشرية، ويجيلك إشعار واحد بإيقاف الردود الآلية.</li>
+<li>في لوحة الإدارة اختار <strong>محتاجة تدخل بشري</strong> ثم <strong>تحديث</strong>. افتح المحادثة؛ شوف الحالة والملخص ومصدره. <code>groq</code> يعني الملخص اتولد بالموديل؛ <code>fallback</code> يعني فيه عطل واتحفظ آخر الكلام محليًا بدل ما الطلب يضيع.</li>
+<li>ابعت <code>طيب رد عليّ</code> بعد التحويل؛ هتتحفظ الرسالة، لكن البوت مش هيرد ومش هيكلم Groq. الفويس أثناء التوقف بيتحفظ كـmedia ID فقط، ومش بيتفرغ تلقائيًا.</li>
+</ol>
+<h3 id="_3">طلب موظف صريح ورد يدوي</h3>
+<ol>
+<li>اضغط <strong>تشغيل البوت</strong>، وابعت <code>عايز أكلم موظف</code>. ده مسار تحويل مباشر حتى قبل قرار نموذج الرد.</li>
+<li>افتح اللوحة واكتب ردك في الخانة، مثل: <code>أهلًا يا سيف، معاك مسؤول الدعم. محتاج أعرف نوع الموقع المطلوب.</code> واضغط <strong>إرسال الرد</strong>.</li>
+<li>الرد يتبعت عبر Cloud API من <strong>رقم اختبار Meta نفسه</strong>، خلال نافذة 24 ساعة. المحادثة تفضل <code>human_required</code> بعد الرد اليدوي.</li>
+<li>لما تخلص، اضغط <strong>إغلاق المحادثة</strong> لو عايز توقفها، أو <strong>تشغيل البوت</strong> لو عايز يرجع يرد.</li>
+<li>بعد تشغيل البوت ابعت <strong>رسالة جديدة</strong>: <code>إيه مواعيدكم؟</code>. الرسائل القديمة المتوقفة مش بتتعاد تلقائيًا. الحالة <code>resolved</code> كمان مش بتفتح نفسها لو العميل بعت؛ لازم تشغيل البوت يدويًا.</li>
+</ol>
+<p><strong>التحويل هنا معناه تسجيل طلب في لوحة محلية، مش إرسال تنبيه فعلي لموظف أو ضمان إن حد بيراقبها. لازم أنت تفتح اللوحة وتتابعها.</strong></p>
+<h3 id="api-swagger">API الإدارة لو حبيت تستخدم Swagger</h3>
+<p>كل المسارات التالية تتطلب هيدر <code>X-Admin-Key</code>، والقيمة هي <code>ADMIN_API_KEY</code>:</p>
+<table>
+<thead>
+<tr>
+<th>العملية</th>
+<th>المسار</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>فحص الإعدادات بدون كشف القيم السرية</td>
+<td><code>GET /admin/config</code></td>
+</tr>
+<tr>
+<td>قائمة المحادثات</td>
+<td><code>GET /admin/conversations?status=human_required&amp;limit=100&amp;offset=0</code></td>
+</tr>
+<tr>
+<td>تفاصيل ورسائل</td>
+<td><code>GET /admin/conversations/{phone}</code></td>
+</tr>
+<tr>
+<td>رسائل أقدم</td>
+<td>نفس المسار مع <code>?before=ID&amp;limit=100</code></td>
+</tr>
+<tr>
+<td>تحويل لموظف</td>
+<td><code>POST /admin/conversations/{phone}/pause</code></td>
+</tr>
+<tr>
+<td>رجوع البوت</td>
+<td><code>POST /admin/conversations/{phone}/resume</code></td>
+</tr>
+<tr>
+<td>إغلاق</td>
+<td><code>POST /admin/conversations/{phone}/resolve</code></td>
+</tr>
+<tr>
+<td>رد يدوي</td>
+<td><code>POST /admin/conversations/{phone}/reply</code> مع JSON <code>{"text":"أهلًا"}</code></td>
+</tr>
+</tbody>
+</table>
+<p>استخدم رقم العميل الموجود في اللوحة بدل <code>{phone}</code>، بالأرقام الدولية فقط. لو في رد جارٍ حاليًا، إجراء الإدارة بينتظر انتهاءه قبل تغيير الحالة علشان يمنع تعارض الإرسال.</p>
+<h2 id="9">9. حل المشاكل — السبب والخطوة المطلوبة</h2>
+<p>بعد إصلاح مشكلة خدمات خارجية: أعد تشغيل FastAPI لو عدّلت <code>.env</code>، افتح المحادثة في اللوحة، اضغط <strong>تشغيل البوت</strong>، وابعت رسالة جديدة. الرسالة الفاشلة مش بتتبعت تلقائيًا مرة تانية.</p>
+<table>
+<thead>
+<tr>
+<th>المشكلة/الكود</th>
+<th>السبب المعتاد</th>
+<th>تعمل إيه بالضبط؟</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>groq_invalid_key</code> أو 401</td>
+<td>مفتاح Groq غلط/ملغي</td>
+<td>افتح <code>.env</code>، بدّل <code>GROQ_API_KEY</code> بمفتاح صالح من حسابك، احفظ، أعد التشغيل، شغّل <code>python -m scripts.check_setup --groq</code></td>
+</tr>
+<tr>
+<td><code>groq_permission_denied</code></td>
+<td>حسابك مش مسموح له بالنموذج</td>
+<td>راجع Model Permissions وخطة حساب Groq؛ اختار موديل متاح في حسابك ويدعم JSON output، وحدّث <code>GROQ_MODEL</code> ثم أعد فحص Groq</td>
+</tr>
+<tr>
+<td><code>groq_model_unavailable</code> / <code>groq_bad_request_or_model</code></td>
+<td>موديل مش متاح أو إعداداته غير مدعومة</td>
+<td>ابدأ بالموديل الافتراضي المذكور، وراجع <a href="https://console.groq.com/docs/models">Models</a>. الفحص بيؤكد وجوده ثم يجرب مكالمة فعلية؛ مفيش تغيير موديل تلقائي</td>
+</tr>
+<tr>
+<td><code>groq_rate_limit</code> / cooldown / 429</td>
+<td>تجاوز حصة الطلبات أو التوكنات أو الصوت</td>
+<td>انتظر مدة Retry-After أو تجدد حصتك حسب صفحة Limits؛ قلل الاختبارات والفويس الطويل، ومتضغطش إرسال بشكل متكرر. بعد الانتظار Resume ورسالة جديدة</td>
+</tr>
+<tr>
+<td><code>groq_local_daily_limit</code></td>
+<td>وصلت 100 مكالمة محلية في اليوم</td>
+<td>انتظر يوم UTC جديد؛ لو حصة Groq تسمح فعلًا، عدّل <code>GROQ_MAX_CALLS_PER_DAY</code> لقيمة مناسبة ثم أعد التشغيل. متحذفش قاعدة البيانات لتجاوز حدود الخدمة</td>
+</tr>
+<tr>
+<td><code>groq_network_or_timeout</code></td>
+<td>الإنترنت أو Groq بطيء</td>
+<td>افحص اتصالك، جرّب <code>--groq</code> مرة واحدة، ولو لزم ارفع <code>REQUEST_TIMEOUT=60</code> وأعد التشغيل</td>
+</tr>
+<tr>
+<td><code>groq_invalid_output</code></td>
+<td>الرد مش JSON صحيح أو خرج عن الشكل المطلوب</td>
+<td>البوت وقف المحادثة بدل إرسال جواب غير صالح. اتأكد من موديل يدعم JSON؛ جرّب رسالة قصيرة بعد Resume</td>
+</tr>
+<tr>
+<td>Meta 401 / code 190</td>
+<td>Access Token غلط أو انتهى</td>
+<td>افتح API Setup وولّد temporary token جديد، حطه في <code>META_ACCESS_TOKEN</code>، أعد التشغيل ثم <code>python -m scripts.check_setup --meta</code></td>
+</tr>
+<tr>
+<td>Token سليم بس Meta يرفض الـID</td>
+<td>خلط رقم الموبايل بـPhone Number ID أو توكن حساب مختلف</td>
+<td>انسخ <strong>Phone number ID</strong> من نفس قسم test number اللي ولّدت له التوكن. متستخدمش App ID أو WABA ID</td>
+</tr>
+<tr>
+<td>فشل Verify and save</td>
+<td>رابط غلط أو السيرفر واقف أو verify token مختلف</td>
+<td>افتح public <code>/health</code>، شغّل <code>ngrok http 8000</code> مع FastAPI، استخدم HTTPS ينتهي <code>/webhook</code>، والصق قيمة <code>META_VERIFY_TOKEN</code> نفسها بدون مسافات</td>
+</tr>
+<tr>
+<td><code>Invalid webhook signature</code> / 403</td>
+<td><code>META_APP_SECRET</code> من App تاني، أو طلب يدوي غير موقّع</td>
+<td>انسخ App Secret من التطبيق صاحب الـWebhook وأعد التشغيل. متعطلش التحقق. إرسال JSON يدوي من Swagger بدون توقيع متوقع يترفض؛ الاختبارات بتولّد توقيع صحيح</td>
+</tr>
+<tr>
+<td>رسائل الموبايل مش بتوصل للتطبيق</td>
+<td><code>messages</code> مش subscribed أو تطبيق/WABA غلط</td>
+<td>راجع Configuration ثم حقل <code>messages</code>، وقارن Phone Number ID، وافحص وصول الطلب في ngrok. جرّب رد على hello_world من الرقم المعتمد. اختبارات Meta الوهمية اللي فيها ID مختلف ممكن التطبيق يتجاهلها عمدًا</td>
+</tr>
+<tr>
+<td>Meta test من الواجهة يوصل لكن رسالة الموبايل لا</td>
+<td>قيود حساب/وضع التطبيق أو عدم اشتراك الحساب</td>
+<td>راجع تشخيص Webhooks الرسمي وإعداد WhatsApp Business Account. لا تنشر App أو تضف فوترة عشوائيًا؛ نفّذ متطلبات الوضع المعروضة لحسابك. اختبار الهاتف الفعلي هو الفيصل</td>
+</tr>
+<tr>
+<td>الطلب وصل لكن مفيش رد</td>
+<td>المحادثة paused/resolved، أو Groq/Meta فشل</td>
+<td>افتح اللوحة ثم <strong>كل المحادثات</strong>؛ راجع <code>last_error</code> وحالة آخر رسالة. أصلح السبب ثم تشغيل البوت ورسالة جديدة</td>
+</tr>
+<tr>
+<td><code>meta_delivery_131030</code> / recipient not allowed</td>
+<td>رقم المستلم مش متحقق ضمن قائمة الاختبار</td>
+<td>أضف رقم الموبايل إلى To/Manage phone number list في API Setup، أكمل كود التحقق، وابعت منه إلى رقم Meta</td>
+</tr>
+<tr>
+<td><code>meta_delivery_131026</code></td>
+<td>تعذر التسليم لرقم واتساب/حساب غير متاح</td>
+<td>تأكد إن الرقم الصحيح مستخدم على WhatsApp وموافق عليه للاختبار، وإن hello_world بتوصل؛ راجع صفحة أخطاء Meta لو استمر</td>
+</tr>
+<tr>
+<td><code>whatsapp_24h_window_closed</code> / Meta 131047</td>
+<td>آخر رسالة واردة قديمة</td>
+<td>ابعت من موبايل العميل رسالة جديدة، ثم Resume وابعت رسالة أخرى للبوت، أو رد يدويًا بعد الرسالة الجديدة</td>
+</tr>
+<tr>
+<td><code>meta_send_uncertain</code> أو رسالة <code>uncertain</code></td>
+<td>الاتصال اتقطع ومش مؤكد Meta قبلت الإرسال ولا لا</td>
+<td>شوف واتساب نفسه قبل أي إعادة إرسال، وبعدها قرر رد يدوي أو Resume. المشروع مبيكررهاش تلقائيًا</td>
+</tr>
+<tr>
+<td><code>restart_interrupted</code></td>
+<td>السيرفر اتوقف أثناء المعالجة/الإرسال</td>
+<td>راجع آخر محادثة على واتساب واللوحة؛ الرد ممكن يكون وصل. بعد المراجعة Resume وابعت رسالة جديدة</td>
+</tr>
+<tr>
+<td><code>audio_download_network</code> أو Meta 401 عند الصوت</td>
+<td>انقطاع اتصال أو توكن منتهي</td>
+<td>أصلح الشبكة/جدّد توكن Meta، أعد التشغيل، Resume وابعت فويس جديدة؛ البرنامج بيطلب رابطًا حديثًا لكل ملف</td>
+</tr>
+<tr>
+<td><code>audio_untrusted_url</code></td>
+<td>رابط وسائط مش من المضيفات المسموحة</td>
+<td>راجع الـpayload وإعداد Meta. متضفش دومينات عشوائية وما تبعتش التوكن لرابط عميل؛ جرّب فويس WhatsApp جديدة بعد التأكد</td>
+</tr>
+<tr>
+<td><code>audio_checksum_failed</code></td>
+<td>الملف المنزّل مش مطابق لبصمته</td>
+<td>ابعت فويس جديدة بعد فحص الاتصال. متتجاهلش اختلاف البصمة</td>
+</tr>
+<tr>
+<td><code>audio_too_large</code> / <code>audio_transcript_too_long</code></td>
+<td>ملف أكبر من الحد أو تسجيل طويل</td>
+<td>ابعت تسجيل 5–10 ثواني بدل ملف كبير. الحد المحلي 16MB والنص المفرّغ حتى 4096 حرف</td>
+</tr>
+<tr>
+<td><code>audio_unsupported_format</code></td>
+<td>ملف AAC/AMR أو MIME غير مدعوم</td>
+<td>سجّل فويس من ميكروفون WhatsApp نفسه، أو ابعت نص؛ OGG المعتاد مدعوم ومش محتاج FFmpeg</td>
+</tr>
+<tr>
+<td>تفريغ فاضي أو كلام غلط</td>
+<td>صوت منخفض/ضوضاء/تسجيل غير واضح</td>
+<td>جرّب فويس قصيرة وواضحة بدون موسيقى؛ لو الحالة اتوقفت اضغط Resume. تقدر تغيّر <code>GROQ_WHISPER_MODEL=whisper-large-v3</code> لو متاح في حسابك وتعيد التشغيل</td>
+</tr>
+<tr>
+<td>ngrok 502 / tunnel offline</td>
+<td>FastAPI واقف أو بورت مختلف</td>
+<td>تأكد <code>/health</code> المحلي شغال، شغّل السيرفر على 8000 ثم <code>ngrok http 8000</code>، واستخدم الرابط الحالي</td>
+</tr>
+<tr>
+<td>ngrok authentication / limit error</td>
+<td>authtoken غلط أو حصة الخطة انتهت</td>
+<td>أعد <code>ngrok config add-authtoken</code> بتوكن حسابك، راجع limits، وأوقف الأنفاق الزائدة. مش مطلوب ترقية تلقائية</td>
+</tr>
+<tr>
+<td><code>No module named ...</code> أو dependency conflict</td>
+<td>التيرمنال بيستخدم Python خارج البيئة</td>
+<td>فعّل <code>.venv</code> أو استخدم <code>.\.venv\Scripts\python.exe -m pip install -r requirements.txt</code> ثم <code>python -m pip check</code></td>
+</tr>
+<tr>
+<td>PowerShell scripts disabled</td>
+<td>سياسة التفعيل</td>
+<td>استخدم أمر Set-ExecutionPolicy لجلسة Process الموضح فوق أو شغّل Python البيئة مباشرة</td>
+</tr>
+<tr>
+<td><code>unable to open database file</code> / init failed</td>
+<td>مجلد غير قابل للكتابة أو DB_PATH غلط</td>
+<td>حط المشروع في مجلد تملكه مثل Documents، استخدم <code>DB_PATH=data/conversations.sqlite3</code>، اتأكد إن <code>data</code> موجود وغير read-only، ثم أعد التشغيل</td>
+</tr>
+<tr>
+<td><code>database is locked</code></td>
+<td>أكتر من نسخة سيرفر/برنامج ماسك قاعدة البيانات</td>
+<td>اقفل النسخة الزائدة وبرامج تحرير SQLite، وشغّل Uvicorn مرة واحدة بدون reload/workers إضافيين</td>
+</tr>
+<tr>
+<td><code>knowledge_file_unavailable</code></td>
+<td>الملف اتنقل/اتحذف</td>
+<td>رجّع <code>data/knowledge.md</code> أو صحح <code>KNOWLEDGE_PATH</code>، واحفظ UTF-8</td>
+</tr>
+<tr>
+<td><code>knowledge_empty_or_too_large</code></td>
+<td>الملف فارغ أو أكثر من 14000 حرف</td>
+<td>استخدم معلومات الشركة الأساسية فقط؛ حجم صغير مناسب لحصة Groq المجانية</td>
+</tr>
+<tr>
+<td>الدخول للوحة يرجع 401</td>
+<td>Admin key غلط</td>
+<td>انسخ قيمة <code>ADMIN_API_KEY</code> من <code>.env</code> فقط؛ مش Meta token. لو غيرته أعد تشغيل السيرفر</td>
+</tr>
+<tr>
+<td>port 8000 already in use</td>
+<td>سيرفر قديم لسه شغال</td>
+<td>ارجع لتيرمناله واضغط Ctrl+C. متشغّلش نسختين على نفس قاعدة البيانات</td>
+</tr>
+</tbody>
+</table>
+<p>لو حصل تعارض حزم ومش اتحل بالتثبيت، اقفل السيرفر، وافتح Terminal جديد في مجلد المشروع واعمل بيئة جديدة باسم مختلف بدون حذف ملفاتك:</p>
+<pre><code class="language-powershell">py -3.12 -m venv .venv-clean
+.\.venv-clean\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+python -m pip check
+python -m pytest -q
+</code></pre>
+<h2 id="10">10. الملفات والتأكد النهائي</h2>
+<table>
+<thead>
+<tr>
+<th>الملف/المجلد</th>
+<th>اللي هتستخدمه دلوقتي</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>START_HERE.html</code></td>
+<td>نفس دليل التشغيل بتنسيق عربي؛ افتحه بدبل كليك في المتصفح</td>
+</tr>
+<tr>
+<td><code>.env.example</code></td>
+<td>نموذج إعدادات بدون أسرار</td>
+</tr>
+<tr>
+<td><code>.env</code></td>
+<td>يتعمل على جهازك فقط؛ مش موجود في ZIP</td>
+</tr>
+<tr>
+<td><code>requirements.txt</code></td>
+<td>الحزم المثبّتة بإصدارات محددة</td>
+</tr>
+<tr>
+<td><code>app/main.py</code></td>
+<td>مدخل السيرفر والـwebhooks والإدارة</td>
+</tr>
+<tr>
+<td><code>app/config.py</code></td>
+<td>قراءة الإعدادات</td>
+</tr>
+<tr>
+<td><code>app/whatsapp.py</code></td>
+<td>إرسال Meta وتنزيل الصوت وفحص التوقيع</td>
+</tr>
+<tr>
+<td><code>app/llm.py</code> و<code>app/transcription.py</code></td>
+<td>Groq للرد والتفريغ</td>
+</tr>
+<tr>
+<td><code>app/database.py</code> و<code>app/models.py</code></td>
+<td>SQLite والتحقق من المدخلات</td>
+</tr>
+<tr>
+<td><code>app/handoff.py</code> و<code>app/worker.py</code></td>
+<td>التحويل ومعالجة الرسائل المسجلة</td>
+</tr>
+<tr>
+<td><code>app/static/</code></td>
+<td>لوحة الإدارة بدون React أو build step</td>
+</tr>
+<tr>
+<td><code>data/knowledge.md</code></td>
+<td>عدّل معلومات الشركة هنا</td>
+</tr>
+<tr>
+<td><code>scripts/prepare_env.py</code></td>
+<td>تجهيز أسرار التحقق والإدارة محليًا</td>
+</tr>
+<tr>
+<td><code>scripts/check_setup.py</code></td>
+<td>تشخيص الإعدادات والاتصالات الاختياري</td>
+</tr>
+<tr>
+<td><code>tests/</code></td>
+<td>اختبارات محلية بدون مفاتيح حقيقية</td>
+</tr>
+<tr>
+<td><code>VALIDATION.md</code></td>
+<td>تقرير الفحوصات وحدود الاختبار</td>
+</tr>
+</tbody>
+</table>
+<p>الرسائل المقبولة بتتحفظ في SQLite قبل رجوع webhook بنجاح، وبعدها المعالجة تحصل في الخلفية. الرسالة بنفس WhatsApp ID مش بتتنفذ مرتين. بعد توقف مفاجئ: الرسائل اللي لسه queued بتكمل، واللي كانت قيد المعالجة بتروح مراجعة بشرية. منع تكرار حدث وارد مش ضمان تسليم شبكة exactly-once؛ لهذا الإرسال غير المؤكد بيتوقف للمراجعة.</p>
+<p>الحوار والبيانات محفوظين بدون تشفير على جهازك داخل SQLite، فاحمِ جهازك وما ترفعش قاعدة البيانات. الـZIP مفيهوش أسرار أو محادثات. ملف <code>.gitignore</code> بيستبعدهم. مفيش حذف تلقائي للبيانات ولا تشغيل إنتاج متعدد المستخدمين في النسخة دي.</p>
+<p>قرار التحويل للنموذج مبني على التعليمات ووجود اقتباس داعم من المعرفة، مع تحقق من شكل الرد؛ ده تقليل للتخمين، مش ضمان إن نموذج لغوي عمره ما يغلط. قبل أي استخدام مع عملاء فعليين جرّب أسئلة شركتك بالعربي والإنجليزي، خصوصًا الأسعار والسياسات.</p>
+<h3 id="_4">المصادر الرسمية</h3>
+<p>المراجع التالية للتحقق من الإعدادات والخدمات؛ مش مطلوب تقرأها كلها علشان تبدأ:</p>
+<ul>
+<li><a href="https://console.groq.com/docs/models">Groq: Models</a> و<a href="https://console.groq.com/docs/model/openai/gpt-oss-20b">GPT-OSS 20B</a>.</li>
+<li><a href="https://console.groq.com/docs/rate-limits">Groq: Rate limits</a> و<a href="https://console.groq.com/docs/speech-to-text">Speech to text</a>.</li>
+<li><a href="https://github.com/groq/groq-python">Groq Python SDK الرسمي</a>.</li>
+<li><a href="https://developers.facebook.com/documentation/business-messaging/whatsapp/get-started">Meta: WhatsApp Get Started</a> و<a href="https://developers.facebook.com/documentation/business-messaging/whatsapp/access-tokens">Access tokens</a>.</li>
+<li><a href="https://developers.facebook.com/documentation/business-messaging/whatsapp/webhooks/overview">Meta: Webhooks</a> و<a href="https://developers.facebook.com/documentation/business-messaging/whatsapp/webhooks/create-webhook-endpoint">Create webhook endpoint</a>.</li>
+<li><a href="https://developers.facebook.com/docs/apps/settings/basic/">Meta: App settings</a> و<a href="https://developers.facebook.com/docs/graph-api/changelog/versions/">Graph API versions</a>.</li>
+<li><a href="https://github.com/facebook/facebook-python-business-sdk/releases/tag/26.0.0">Meta Official SDK v26 release</a> و<a href="https://www.postman.com/meta/whatsapp-business-platform/collection/wlk6lh4/whatsapp-cloud-api">مجموعة WhatsApp الرسمية على Postman</a>.</li>
+<li><a href="https://developers.facebook.com/documentation/business-messaging/whatsapp/support/error-codes">Meta: Error codes</a>.</li>
+<li><a href="https://ngrok.com/download/windows">ngrok: Windows installation</a> و<a href="https://ngrok.com/blog/free-static-domains-ngrok-users">Free dev domains</a>.</li>
+</ul></main></body></html>
